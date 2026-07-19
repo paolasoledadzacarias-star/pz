@@ -1,0 +1,366 @@
+{
+  "name": "checkpoint4_paola_zacarias",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        96
+      ],
+      "id": "b0a3dcb3-7ffc-445d-8779-d1f32a795623",
+      "name": "Casilla de soporte",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jdkjqcTvavfNzpsE",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "leftValue": "={{ $json.Subject }}",
+              "rightValue": "auto-reply|out of office|undeliverable",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "cond2",
+              "leftValue": "={{ $json.From }}",
+              "rightValue": "no-reply@",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -272,
+        96
+      ],
+      "id": "4f427f30-8aec-4d7a-aea9-84849bd6eda4",
+      "name": "Filtrar auto-reply"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        -48
+      ],
+      "id": "54022d7b-4417-4502-b625-bfbfe9ad66a7",
+      "name": "Ignorar (auto-reply)"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        64,
+        384
+      ],
+      "id": "a7ada84d-1f13-42b1-beef-c490d79f398c",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "H1mhiuDA8Vt2mjdP",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Asunto: {{ $json.Subject }}\nDe: {{ $json.From }}\nMensaje: {{ $json.snippet }}",
+        "options": {
+          "systemMessage": "ROL\nSos el Agente de soporte al cliente de una tienda de e-commerce.\n\nOBJETIVO\nLeer el mail del cliente y redactar una respuesta breve, cordial y clara en español neutro, resolviendo la consulta o pidiendo la información que falte para poder ayudar.\n\nREGLAS\n- No inventes políticas, precios ni plazos que no te hayan dado.\n- Si no tenés información suficiente para resolver, redactá una respuesta pidiendo los datos necesarios.\n- Firmá como \"Equipo de Soporte\"."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        64,
+        112
+      ],
+      "id": "6696b94d-b847-42f2-87ed-7447fa328f07",
+      "name": "Redactar respuesta",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=Re: {{ $('Casilla de soporte').item.json.Subject }}",
+        "message": "={{ $json.output }}",
+        "options": {
+          "threadId": "={{ $('Casilla de soporte').item.json.threadId }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        384,
+        -64
+      ],
+      "id": "4080e603-bf10-42c4-a60e-daa217f99693",
+      "name": "Crear borrador",
+      "webhookId": "9669b89c-8320-4b3e-a567-40767c6e6e3a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jdkjqcTvavfNzpsE",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "getAll",
+        "limit": 1,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [
+        384,
+        176
+      ],
+      "id": "a457541e-2620-4b2c-89d9-fba74c33edfb",
+      "name": "Buscar contacto",
+      "alwaysOutputData": true,
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "Na9Hm41F6v1eHa4u",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ (() => { const f = $('Casilla de soporte').item.json.From; const m = f.match(/<(.+)>/); return m ? m[1] : f; })() }}",
+        "additionalFields": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [
+        640,
+        176
+      ],
+      "id": "556bddde-09d1-4719-9128-ff9ff17ab479",
+      "name": "Crear contacto",
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "Na9Hm41F6v1eHa4u",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "remitente",
+              "value": "={{ $('Casilla de soporte').item.json.From }}",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "asunto",
+              "value": "={{ $('Casilla de soporte').item.json.Subject }}",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "resumen",
+              "value": "={{ $('Casilla de soporte').item.json.snippet }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        928,
+        176
+      ],
+      "id": "647c01a6-0bac-4741-8ed1-7c23db9c43f0",
+      "name": "Limpiar payload para Slack"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "D0BJ6D5LGDB",
+          "mode": "id"
+        },
+        "text": "=Nuevo ticket de soporte de {{ $json.remitente }}\nAsunto: {{ $json.asunto }}\nBorrador de respuesta generado, pendiente de revisión.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        176
+      ],
+      "id": "227a8990-0818-4ea1-a646-9277340308f3",
+      "name": "Avisar a Operaciones",
+      "webhookId": "bce07d22-7321-4299-ad08-95edbb814d4a",
+      "credentials": {
+        "slackApi": {
+          "id": "OTeG029fjygekUzQ",
+          "name": "Slack account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Casilla de soporte": {
+      "main": [
+        [
+          {
+            "node": "Filtrar auto-reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar auto-reply": {
+      "main": [
+        [
+          {
+            "node": "Ignorar (auto-reply)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redactar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Redactar respuesta",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactar respuesta": {
+      "main": [
+        [
+          {
+            "node": "Crear borrador",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Buscar contacto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar contacto": {
+      "main": [
+        [
+          {
+            "node": "Crear contacto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear contacto": {
+      "main": [
+        [
+          {
+            "node": "Limpiar payload para Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar payload para Slack": {
+      "main": [
+        [
+          {
+            "node": "Avisar a Operaciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ab030aad-6129-4d6b-b516-3e224005c869",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "008b4aa93e8f52bbae35a2e52622117c3194cf577b07b7dd83ff65758b828555"
+  },
+  "nodeGroups": [],
+  "id": "uWM6w9Mq0CnYV5ms",
+  "tags": []
+}
